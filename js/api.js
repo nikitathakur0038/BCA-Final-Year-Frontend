@@ -1,8 +1,8 @@
-// Auto-detect API URL: use local backend in development, tunnel URL on Vercel
+// Auto-detect API URL: use local backend in development, same-origin /api on Vercel
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
 const API_BASE_URL = isLocal
     ? 'http://localhost:3000/api'
-    : 'https://companion-marathon-academy-buying.trycloudflare.com/api';
+    : '/api';
 
 const fetchApi = async (endpoint, options = {}) => {
     const token = localStorage.getItem('token');
