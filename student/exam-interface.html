@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Examination Interface</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .exam-header { background: white; padding: 15px 0; border-bottom: 1px solid #e9ecef; position: sticky; top: 0; z-index: 1000; }
+        .timer { font-size: 1.5rem; font-weight: bold; font-family: monospace; }
+        .timer.danger { color: #dc3545; animation: blink 1s linear infinite; }
+        @keyframes blink { 50% { opacity: 0.5; } }
+        
+        .question-palette { display: flex; flex-wrap: wrap; gap: 8px; }
+        .q-btn { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 5px; cursor: pointer; border: 1px solid #dee2e6; font-weight: 500; transition: all 0.2s; }
+        .q-btn.answered { background-color: #198754; color: white; border-color: #198754; }
+        .q-btn.current { border-color: #0d6efd; box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25); }
+        .q-btn:hover { background-color: #e9ecef; }
+        
+        .option-label { display: block; padding: 15px; border: 1px solid #dee2e6; border-radius: 8px; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+        .option-label:hover { background-color: #f8f9fa; }
+        .option-input:checked + .option-label { border-color: #0d6efd; background-color: #f0f7ff; }
+        .option-input { display: none; }
+        
+        .question-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+
+    <header class="exam-header shadow-sm">
+        <div class="container-fluid px-4">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <h5 class="mb-0 text-primary" id="examTitle">Exam Title</h5>
+                    <small class="text-muted" id="studentName">Student Name</small>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="timer" id="timerDisplay">00:00:00</div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-danger" onclick="confirmSubmit()">Submit Exam</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-fluid mt-4 px-4">
+        <div class="row">
+            <!-- Left Side: Question Display -->
+            <div class="col-lg-8 mb-4">
+                <div class="question-card">
+                    <div class="d-flex justify-content-between mb-4">
+                        <h5 class="text-primary mb-0">Question <span id="qNum">1</span> of <span id="qTotal">10</span></h5>
+                        <span class="badge bg-secondary" id="qMarks">1.0 Mark</span>
+                    </div>
+                    
+                    <h4 class="mb-4" id="questionText">Loading question...</h4>
+                    
+                    <div id="optionsContainer">
+                        <!-- Options injected here -->
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-5">
+                        <button class="btn btn-outline-secondary" id="btnPrev" onclick="navigate(-1)">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="clearAnswer()">
+                            Clear Answer
+                        </button>
+                        <button class="btn btn-primary" id="btnNext" onclick="navigate(1)">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Question Palette -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 pt-3">
+                        <h6 class="mb-0">Question Palette</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="question-palette" id="paletteContainer">
+                            <!-- Palette buttons injected here -->
+                        </div>
+                        <hr>
+                        <div class="d-flex gap-3 small text-muted">
+                            <div><span class="d-inline-block bg-success rounded-circle me-1" style="width:10px;height:10px;"></span> Answered</div>
+                            <div><span class="d-inline-block bg-white border rounded-circle me-1" style="width:10px;height:10px;"></span> Not Answered</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Modal -->
+    <div class="modal fade" id="submitModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">Confirm Submission</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to submit the exam?</p>
+                    <ul>
+                        <li>Total Questions: <span id="mTotal"></span></li>
+                        <li>Answered: <span id="mAnswered" class="text-success fw-bold"></span></li>
+                        <li>Unanswered: <span id="mUnanswered" class="text-danger fw-bold"></span></li>
+                    </ul>
+                    <p class="text-muted small">You cannot change your answers after submission.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="submitExam()">Yes, Submit Exam</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+        checkAuth();
+        const user = JSON.parse(localStorage.getItem('user'));
+        
+        let attemptData = JSON.parse(sessionStorage.getItem('currentAttempt'));
+        if (!attemptData) {
+            alert('Invalid session. Redirecting...');
+            window.location.href = 'student-exams.html';
+        }
+
+        const { attempt_id, exam, questions } = attemptData;
+        let currentQIndex = 0;
+        let answers = {}; // { question_id: 'A' }
+        let timerInterval;
+        let endTime;
+
+        const submitModal = new bootstrap.Modal(document.getElementById('submitModal'));
+
+        function initExam() {
+            document.getElementById('examTitle').textContent = exam.title;
+            document.getElementById('studentName').textContent = user.name;
+            document.getElementById('qTotal').textContent = questions.length;
+
+            // Timer Setup
+            // Assuming the attempt started NOW from session logic, but ideally we should track server started_at
+            // For simplicity, using client side duration calculation from now
+            endTime = new Date().getTime() + (exam.duration_minutes * 60 * 1000);
+            startTimer();
+
+            // Build Palette
+            const palette = document.getElementById('paletteContainer');
+            questions.forEach((q, index) => {
+                const btn = document.createElement('div');
+                btn.className = 'q-btn';
+                btn.id = `pal-${index}`;
+                btn.textContent = index + 1;
+                btn.onclick = () => jumpToQuestion(index);
+                palette.appendChild(btn);
+            });
+
+            renderQuestion();
+        }
+
+        function startTimer() {
+            timerInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const distance = endTime - now;
+
+                if (distance <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('timerDisplay').textContent = "00:00:00";
+                    alert('Time is up! Submitting exam automatically.');
+                    submitExam();
+                    return;
+                }
+
+                const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((distance % (1000 * 60)) / 1000);
+
+                const display = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+                const timerEl = document.getElementById('timerDisplay');
+                timerEl.textContent = display;
+
+                if (distance < 5 * 60 * 1000) { // Less than 5 mins
+                    timerEl.classList.add('danger');
+                }
+            }, 1000);
+        }
+
+        function renderQuestion() {
+            const q = questions[currentQIndex];
+            document.getElementById('qNum').textContent = currentQIndex + 1;
+            document.getElementById('qMarks').textContent = `${q.marks} Mark(s)`;
+            document.getElementById('questionText').textContent = q.question_text;
+
+            const opts = [
+                { id: 'A', text: q.option_a },
+                { id: 'B', text: q.option_b },
+                { id: 'C', text: q.option_c },
+                { id: 'D', text: q.option_d }
+            ];
+
+            const container = document.getElementById('optionsContainer');
+            container.innerHTML = '';
+            
+            opts.forEach(opt => {
+                const checked = answers[q.id] === opt.id ? 'checked' : '';
+                container.innerHTML += `
+                    <div>
+                        <input type="radio" name="opt-${q.id}" id="opt-${opt.id}" class="option-input" value="${opt.id}" onchange="selectAnswer('${q.id}', '${opt.id}')" ${checked}>
+                        <label for="opt-${opt.id}" class="option-label">
+                            <strong>${opt.id}.</strong> ${opt.text}
+                        </label>
+                    </div>
+                `;
+            });
+
+            // Update Palette UI
+            document.querySelectorAll('.q-btn').forEach(b => b.classList.remove('current'));
+            document.getElementById(`pal-${currentQIndex}`).classList.add('current');
+
+            // Button states
+            document.getElementById('btnPrev').disabled = currentQIndex === 0;
+            document.getElementById('btnNext').disabled = currentQIndex === questions.length - 1;
+        }
+
+        function navigate(dir) {
+            currentQIndex += dir;
+            renderQuestion();
+        }
+
+        function jumpToQuestion(index) {
+            currentQIndex = index;
+            renderQuestion();
+        }
+
+        async function selectAnswer(qId, selectedOpt) {
+            answers[qId] = selectedOpt;
+            document.getElementById(`pal-${currentQIndex}`).classList.add('answered');
+            
+            // Sync with server asynchronously without blocking UI
+            try {
+                await fetchApi(`/attempts/${attempt_id}/answers`, {
+                    method: 'POST',
+                    body: JSON.stringify({ question_id: qId, selected_answer: selectedOpt })
+                });
+            } catch (err) {
+                console.error('Failed to sync answer', err);
+            }
+        }
+
+        async function clearAnswer() {
+            const qId = questions[currentQIndex].id;
+            delete answers[qId];
+            
+            // uncheck radios
+            document.querySelectorAll(`input[name="opt-${qId}"]`).forEach(r => r.checked = false);
+            document.getElementById(`pal-${currentQIndex}`).classList.remove('answered');
+
+            try {
+                await fetchApi(`/attempts/${attempt_id}/answers`, {
+                    method: 'POST',
+                    body: JSON.stringify({ question_id: qId, selected_answer: null })
+                });
+            } catch (err) {
+                console.error('Failed to clear answer', err);
+            }
+        }
+
+        function confirmSubmit() {
+            const answeredCount = Object.keys(answers).length;
+            document.getElementById('mTotal').textContent = questions.length;
+            document.getElementById('mAnswered').textContent = answeredCount;
+            document.getElementById('mUnanswered').textContent = questions.length - answeredCount;
+            submitModal.show();
+        }
+
+        async function submitExam() {
+            clearInterval(timerInterval);
+            submitModal.hide();
+            
+            // Block UI
+            document.body.innerHTML = '<div class="d-flex justify-content-center align-items-center vh-100 flex-column"><h4>Submitting Exam...</h4><div class="spinner-border text-primary"></div></div>';
+            
+            try {
+                const res = await fetchApi(`/attempts/${attempt_id}/submit`, { method: 'POST' });
+                sessionStorage.removeItem('currentAttempt');
+                window.location.href = `student-results.html?attempt_id=${attempt_id}`;
+            } catch (error) {
+                alert('Submission failed: ' + error.message);
+                window.location.reload();
+            }
+        }
+
+        // Prevent accidental reload
+        window.onbeforeunload = function() {
+            if(sessionStorage.getItem('currentAttempt')) {
+                return "You have an exam in progress. Are you sure you want to leave?";
+            }
+        };
+
+        // Disable text selection and copying
+        document.addEventListener('contextmenu', event => event.preventDefault());
+        document.onselectstart = () => false;
+
+        initExam();
+    </script>
+</body>
+</html>

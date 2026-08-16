@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Online Examination System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <h3 class="text-center mb-4">Login to System</h3>
+            <div id="alertBox" class="alert d-none"></div>
+            <form id="loginForm">
+                <div class="mb-3">
+                    <label for="email" class="form-label">Email address</label>
+                    <input type="email" class="form-control" id="email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100" id="loginBtn">Login</button>
+                <div class="text-center mt-3">
+                    <a href="register.html" class="text-decoration-none">Don't have an account? Register here</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const alertBox = document.getElementById('alertBox');
+            const btn = document.getElementById('loginBtn');
+
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Logging in...';
+                alertBox.classList.add('d-none');
+
+                const data = await fetchApi('/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password })
+                });
+
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data));
+
+                if (data.role === 'admin') {
+                    window.location.href = 'admin/admin-dashboard.html';
+                } else {
+                    window.location.href = 'student/student-dashboard.html';
+                }
+            } catch (error) {
+                alertBox.textContent = error.message;
+                alertBox.classList.remove('d-none', 'alert-success');
+                alertBox.classList.add('alert-danger');
+                btn.disabled = false;
+                btn.textContent = 'Login';
+            }
+        });
+    </script>
+</body>
+</html>
