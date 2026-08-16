@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - Online Examination System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <h4 class="text-center mb-4">Teacher Panel</h4>
+            <a href="teacher-dashboard.html" class="active"><i class="bi bi-speedometer2 me-2"></i> Dashboard</a>
+            <a href="teacher-exams.html"><i class="bi bi-journal-check me-2"></i> Manage Exams</a>
+            <a href="#" onclick="logout()" class="text-danger mt-5"><i class="bi bi-box-arrow-right me-2"></i> Logout</a>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Welcome, <span id="teacherName">Teacher</span></h2>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3 mb-4">
+                    <div class="card bg-primary text-white h-100 p-3 shadow-sm border-0">
+                        <h5><i class="bi bi-people me-1"></i> Total Students</h5>
+                        <h2 id="totalStudents"><span class="spinner-border spinner-border-sm" role="status"></span></h2>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card bg-success text-white h-100 p-3 shadow-sm border-0">
+                        <h5><i class="bi bi-journal-check me-1"></i> Total Exams</h5>
+                        <h2 id="totalExams"><span class="spinner-border spinner-border-sm" role="status"></span></h2>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card bg-info text-white h-100 p-3 shadow-sm border-0">
+                        <h5><i class="bi bi-check2-circle me-1"></i> Published Exams</h5>
+                        <h2 id="totalPublished"><span class="spinner-border spinner-border-sm" role="status"></span></h2>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card bg-warning text-white h-100 p-3 shadow-sm border-0">
+                        <h5><i class="bi bi-bar-chart-line me-1"></i> Total Attempts</h5>
+                        <h2 id="totalAttempts"><span class="spinner-border spinner-border-sm" role="status"></span></h2>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">My Exams</h5>
+                            <a href="teacher-exams.html" class="btn btn-sm btn-primary">Manage Exams</a>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Exam Title</th>
+                                            <th>Subject</th>
+                                            <th>Duration</th>
+                                            <th>Questions</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="examsTableBody">
+                                        <tr><td colspan="5" class="text-center text-muted py-3">Loading...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="../js/api.js"></script>
+    <script>
+        checkAuth();
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user && user.role !== 'teacher') {
+            window.location.href = user.role === 'admin' ? '../admin/admin-dashboard.html' : '../student/student-dashboard.html';
+        }
+        document.getElementById('teacherName').textContent = user ? user.name : 'Teacher';
+
+        async function loadDashboard() {
+            try {
+                const [exams, students] = await Promise.all([
+                    fetchApi('/exams'),
+                    fetchApi('/users?role=student')
+                ]);
+
+                document.getElementById('totalStudents').textContent = students.length;
+                document.getElementById('totalExams').textContent = exams.length;
+                document.getElementById('totalPublished').textContent = exams.filter(e => e.is_published).length;
+
+                // Load attempts count from analytics if available, else show exam count
+                try {
+                    const analytics = await fetchApi('/analytics/summary');
+                    document.getElementById('totalAttempts').textContent = analytics.totalAttempts || 0;
+                } catch {
+                    document.getElementById('totalAttempts').textContent = '—';
+                }
+
+                // Populate exam table
+                const tbody = document.getElementById('examsTableBody');
+                if (exams.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-3">No exams created yet. <a href="teacher-exams.html">Create one</a>.</td></tr>';
+                } else {
+                    tbody.innerHTML = exams.map(e => `
+                        <tr>
+                            <td><strong>${e.title}</strong></td>
+                            <td>${e.subject_name}</td>
+                            <td>${e.duration_minutes} mins</td>
+                            <td>${e.total_questions}</td>
+                            <td><span class="badge ${e.is_published ? 'bg-success' : 'bg-secondary'}">${e.is_published ? 'Published' : 'Draft'}</span></td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Dashboard load error:', error.message);
+            }
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

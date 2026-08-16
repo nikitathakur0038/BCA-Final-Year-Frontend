@@ -33,15 +33,26 @@ const fetchApi = async (endpoint, options = {}) => {
     }
 };
 
+// Determine the root-relative path to login page based on current location
+function getLoginPath() {
+    const depth = window.location.pathname.split('/').filter(Boolean).length;
+    // If we are in a subdirectory (teacher/, student/, admin/), go up one level
+    if (depth >= 2) {
+        return '../login.html';
+    }
+    return 'login.html';
+}
+
 const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    window.location.href = '/login.html';
+    sessionStorage.clear();
+    window.location.href = getLoginPath();
 };
 
 const checkAuth = () => {
     const token = localStorage.getItem('token');
     if (!token) {
-        window.location.href = '/login.html';
+        window.location.href = getLoginPath();
     }
 };
